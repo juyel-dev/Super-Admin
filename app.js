@@ -61,17 +61,8 @@ function setupGlobalEvents() {
 
 async function syncCategories() {
   const { data, error } = await supabase.from('categories').select('*').order('order_index', { ascending: true });
-  if(!error && data.length > 0) {
+  if(!error) {
     categoriesCache = data;
-  } else {
-    // Structural Fallback
-    categoriesCache = [
-      { id: 'cardiology', name_bn: 'হৃদরোগ (Cardiologist)' },
-      { id: 'dermatology', name_bn: 'চর্ম ও অ্যালার্জি (Skin)' },
-      { id: 'pediatrics', name_bn: 'শিশু রোগ বিশেষজ্ঞ (Pediatrician)' },
-      { id: 'gynecology', name_bn: 'স্ত্রী রোগ ও প্রসূতি (Gynecologist)' },
-      { id: 'medicine', name_bn: 'মেডিসিন বিশেষজ্ঞ (Medicine)' }
-    ];
   }
 }
 
@@ -95,6 +86,9 @@ async function switchTab(moduleName) {
   if (moduleName === 'dashboard') {
     title.innerText = "ড্যাশবোর্ড ওভারভিউ";
     await renderDashboardView(container);
+  } else if (moduleName === 'hospitals') {
+    title.innerText = "ক্যাটাগরি / স্পেশালিটি ম্যানেজমেন্ট"; // আমরা এই মডিউলটিকে সরাসরি ক্যাটাগরি কন্ট্রোলে রূপান্তর করলাম যেন প্যানেল থেকে এডিট করা যায়
+    await renderCategoriesView(container);
   } else if (moduleName === 'doctors') {
     title.innerText = "ডাক্তার প্রোফাইল ম্যানেজমেন্ট";
     await renderDoctorsView(container);
@@ -113,6 +107,7 @@ async function renderDashboardView(target) {
   const { count: docCount } = await supabase.from('doctors').select('*', { count: 'exact', head: true });
   const { count: chamberCount } = await supabase.from('chambers').select('*', { count: 'exact', head: true });
   const { count: reviewCount } = await supabase.from('reviews').select('*', { count: 'exact', head: true, filter: `is_approved.eq.false` });
+  const { count: catCount } = await supabase.from('categories').select('*', { count: 'exact', head: true });
 
   if(reviewCount > 0) {
     const badge = document.getElementById('review-badge');
@@ -120,14 +115,18 @@ async function renderDashboardView(target) {
   }
 
   target.innerHTML = `
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
       <div class="bg-gradient-to-br from-blue-50 to-blue-100/30 p-5 rounded-xl border border-blue-100/70">
-        <p class="text-xs font-semibold text-blue-600 uppercase tracking-wider">মোট ডাটাবেস ডাক্তার</p>
+        <p class="text-xs font-semibold text-blue-600 uppercase tracking-wider">মোট ক্যাটাগরি</p>
+        <h3 class="text-3xl font-bold text-slate-800 mt-1">${catCount || 0}টি মডিউল</h3>
+      </div>
+      <div class="bg-gradient-to-br from-indigo-50 to-indigo-100/30 p-5 rounded-xl border border-indigo-100/70">
+        <p class="text-xs font-semibold text-indigo-600 uppercase tracking-wider">মোট ডাটাবেস ডাক্তার</p>
         <h3 class="text-3xl font-bold text-slate-800 mt-1">${docCount || 0} জন</h3>
       </div>
       <div class="bg-gradient-to-br from-teal-50 to-teal-100/30 p-5 rounded-xl border border-teal-100/70">
         <p class="text-xs font-semibold text-teal-600 uppercase tracking-wider">সক্রিয় চেম্বার লিংকস</p>
-        <h3 class="text-3xl font-bold text-slate-800 mt-1">${chamberCount || 0}টি চেম্বার</h3>
+        <h3 class="text-3xl font-bold text-slate-800 mt-1">${chamberCount || 0}টি</h3>
       </div>
       <div class="bg-gradient-to-br from-amber-50 to-amber-100/30 p-5 rounded-xl border border-amber-100/70">
         <p class="text-xs font-semibold text-amber-600 uppercase tracking-wider">পেন্ডিং রিভিউ মডারেশন</p>
@@ -137,9 +136,106 @@ async function renderDashboardView(target) {
 }
 
 // ====================================================================
-// MODULE ENGINE: DOCTOR & CHAMBER INTERFACE MANAGEMENT (Rule 1 & 5)
+// 🆕 MODULE ENGINE: CATEGORY MANAGEMENT (ADD, EDIT, DELETE FROM PANEL)
+// ====================================================================
+async function renderCategoriesView(target) {
+  await syncCategories();
+
+  let rows = '';
+  if(categoriesCache && categoriesCache.length > 0) {
+    categoriesCache.forEach(cat => {
+      rows += `
+        <tr class="border-b border-slate-100 text-slate-700 text-xs">
+          <td class="font-bold">${cat.name_bn}</td>
+          <td>${cat.name_en}</td>
+          <td><code>${cat.slug}</code></td>
+          <td>${cat.order_index}</td>
+          <td class="text-end">
+            <button onclick="deleteCategory('${cat.id}')" class="btn btn-xs btn-ghost text-red-500">ডিলিট</button>
+          </td>
+        </tr>`;
+    });
+  } else {
+    rows = `<tr><td colspan="5" class="text-center text-slate-400 py-8">কোনো ক্যাটাগরি নেই। বামপাশ থেকে তৈরি করুন।</td></tr>`;
+  }
+
+  target.innerHTML = `
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div class="bg-slate-50/50 p-4 rounded-xl border border-slate-100 h-fit">
+        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-4">নতুন ক্যাটাগরি / স্পেশালিটি এন্ট্রি</h3>
+        <form id="form-add-category" onsubmit="saveCategoryData(event)" class="space-y-3">
+          <div>
+            <label class="label p-1 text-[11px] font-bold text-slate-600">ক্যাটাগরি নাম (বাংলা) *</label>
+            <input type="text" id="cat-name-bn" placeholder="উদা: হৃদরোগ বিশেষজ্ঞ" class="input input-bordered input-sm w-full bg-white text-slate-800" required />
+          </div>
+          <div>
+            <label class="label p-1 text-[11px] font-bold text-slate-600">ক্যাটাগরি নাম (English) *</label>
+            <input type="text" id="cat-name-en" placeholder="Eg: Cardiologist" class="input input-bordered input-sm w-full bg-white text-slate-800" required />
+          </div>
+          <div>
+            <label class="label p-1 text-[11px] font-bold text-slate-600">URL স্ল্যাগ (Slug - ছোট হাতের ইংরেজি) *</label>
+            <input type="text" id="cat-slug" placeholder="উদা: cardiology" class="input input-bordered input-sm w-full bg-white text-slate-800 text-xs" required />
+          </div>
+          <div>
+            <label class="label p-1 text-[11px] font-bold text-slate-600">সিরিয়াল অর্ডার ইন্ডেক্স (সংখ্যা) *</label>
+            <input type="number" id="cat-order" value="1" class="input input-bordered input-sm w-full bg-white text-slate-800" required />
+          </div>
+          <button type="submit" id="btn-save-cat" class="btn btn-primary btn-sm w-full text-white bg-blue-600">ক্যাটাগরি সেভ করুন</button>
+        </form>
+      </div>
+      <div class="lg:col-span-2 overflow-x-auto">
+        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-4">বিদ্যমান ক্যাটাগরি তালিকা</h3>
+        <table class="table w-full">
+          <thead>
+            <tr class="bg-slate-50 text-slate-600 text-xs">
+              <th>নাম (বাংলা)</th><th>Name (English)</th><th>Slug</th><th>অর্ডার</th><th class="text-end">অ্যাকশন</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    </div>`;
+}
+
+async function saveCategoryData(e) {
+  e.preventDefault();
+  const btn = document.getElementById('btn-save-cat');
+  btn.innerText = "সংরক্ষণ হচ্ছে..."; btn.disabled = true;
+
+  const nameBn = document.getElementById('cat-name-bn').value;
+  const nameEn = document.getElementById('cat-name-en').value;
+  const slug = document.getElementById('cat-slug').value.toLowerCase().trim();
+  const orderIndex = parseInt(document.getElementById('cat-order').value) || 1;
+
+  const { error } = await supabase.from('categories').insert([{
+    name_bn: nameBn, name_en: nameEn, slug: slug, order_index: orderIndex, is_active: true
+  }]);
+
+  if(!error) {
+    alert("নতুন ক্যাটাগরি সফলভাবে প্যানেল থেকে তৈরি হয়েছে!");
+    await syncCategories();
+    switchTab('hospitals');
+  } else {
+    alert("ত্রুটি: " + error.message);
+    btn.innerText = "ক্যাটাগরি সেভ করুন"; btn.disabled = false;
+  }
+}
+
+async function deleteCategory(id) {
+  if(confirm("ক্যাটাগরি ডিলিট করলে এর সাথে লিংকড সমস্ত ডাক্তার বা ডাটাবেস এফেক্টেড হতে পারে। আপনি কি নিশ্চিত?")) {
+    const { error } = await supabase.from('categories').delete().eq('id', id);
+    if(!error) {
+      await syncCategories();
+      switchTab('hospitals');
+    }
+  }
+}
+
+// ====================================================================
+// MODULE ENGINE: DOCTOR & CHAMBER INTERFACE MANAGEMENT
 // ====================================================================
 async function renderDoctorsView(target) {
+  await syncCategories();
   const { data: doctorsList } = await supabase.from('doctors').select('*').order('created_at', { ascending: false });
 
   let tableRows = '';
@@ -150,7 +246,7 @@ async function renderDoctorsView(target) {
           <td>
             <div class="flex items-center gap-3">
               <div class="avatar">
-                <div class="w-10 h-10 rounded-full bg-slate-100 border border-slate-200">
+                <div class="w-10 h-10 rounded-full bg-slate-100 border border-slate-200 overflow-hidden">
                   <img src="${doc.image_url || 'https://via.placeholder.com/150'}" alt="Doc">
                 </div>
               </div>
@@ -169,8 +265,13 @@ async function renderDoctorsView(target) {
         </tr>`;
     });
   } else {
-    tableRows = `<tr><td colspan="4" class="text-center text-slate-400 py-8 text-xs">ডাটাবেসে কোনো ডাক্তারের প্রোফাইল পাওয়া যায়নি!</td></tr>`;
+    tableRows = `<tr><td colspan="4" class="text-center text-slate-400 py-8 text-xs">ডাটাবেসে কোনো ডাক্তারের প্রোফাইল পাওয়া যায়নি! প্রথমে বামপাশ থেকে ক্যাটাগরি বানিয়ে ডাক্তার যোগ করুন।</td></tr>`;
   }
+
+  // Check if categories exist, if not alert user to add category first
+  const categoryOptions = categoriesCache.length > 0 
+    ? categoriesCache.map(cat => `<option value="${cat.id}">${cat.name_bn}</option>`).join('')
+    : `<option value="">প্রথমে ক্যাটাগরি তৈরি করুন!</option>`;
 
   target.innerHTML = `
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -187,9 +288,9 @@ async function renderDoctorsView(target) {
           </div>
           <div class="grid grid-cols-2 gap-2">
             <div>
-              <label class="label p-1 text-[11px] font-bold text-slate-600">স্পেশালিটি *</label>
+              <label class="label p-1 text-[11px] font-bold text-slate-600">স্পেশালিটি / ক্যাটাগরি *</label>
               <select id="doc-category" class="select select-bordered select-sm w-full bg-white text-slate-800 text-xs" required>
-                ${categoriesCache.map(cat => `<option value="${cat.id}">${cat.name_bn}</option>`).join('')}
+                ${categoryOptions}
               </select>
             </div>
             <div>
@@ -240,10 +341,15 @@ async function renderDoctorsView(target) {
     </div>`;
 }
 
-// Storage Image Handling Rules & Save Core Data (Rule 4)
 async function saveDoctorData(e) {
   e.preventDefault();
   const btn = document.getElementById('btn-save-doc');
+  
+  if(!document.getElementById('doc-category').value) {
+    alert("দয়া করে আগে ড্যাশবোর্ডের ক্যাটাগরি মডিউল থেকে অন্তত ১টি ক্যাটাগরি বা স্পেশালিটি তৈরি করুন!");
+    return;
+  }
+
   btn.innerText = "সংরক্ষণ হচ্ছে..."; btn.disabled = true;
 
   const nameBn = document.getElementById('doc-name-bn').value;
@@ -289,7 +395,7 @@ async function saveDoctorData(e) {
 }
 
 async function deleteDoctor(id) {
-  if(confirm("আপনি কি নিশ্চিতভাবে এই ডাক্তারকে মুছে ফেলতে চান? তাঁর সাথে যুক্ত সমস্ত চেম্বারও কিন্তু CASCADE DELETE হয়ে যাবে!")) {
+  if(confirm("আপনি কি নিশ্চিতভাবে এই ডাক্তারকে মুছে ফেলতে চান? তাঁর সাথে যুক্ত সমস্ত চেম্বারও কিন্তু স্বয়ংক্রিয়ভাবে মুছে যাবে!")) {
     const { error } = await supabase.from('doctors').delete().eq('id', id);
     if(!error) switchTab('doctors');
   }
@@ -345,7 +451,7 @@ async function saveChamberData(e) {
 }
 
 // ====================================================================
-// MODULE ENGINE: USER REVIEWS MODERATION (UX Approval Flow)
+// MODULE ENGINE: USER REVIEWS MODERATION
 // ====================================================================
 async function renderReviewsView(target) {
   const { data: reviewList } = await supabase
@@ -384,12 +490,9 @@ async function approveReview(id) {
   const { error } = await supabase.from('reviews').update({ is_approved: true }).eq('id', id);
   if(!error) {
     alert("রিভিউটি সফলভাবে অ্যাপ্রুভড করা হয়েছে!");
-    
-    // Decrease real-time counts badge
     const { count } = await supabase.from('reviews').select('*', { count: 'exact', head: true, filter: `is_approved.eq.false` });
     const badge = document.getElementById('review-badge');
     if(count > 0) { badge.innerText = count; } else { badge.classList.add('hidden'); }
-    
     switchTab('reviews');
   }
 }
