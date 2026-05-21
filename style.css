@@ -1,0 +1,39 @@
+/* ==========================================================
+   THEME STYLING CONFIGURATION - UTTERBANGA SWASTHYA SETU
+   ========================================================== */
+
+:root {
+  --p: #2563eb;          /* Primary Soft Accent Blue */
+  --b1: #ffffff;         /* Component Box Background */
+}
+
+body {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  color: #1e293b;        /* Deep Slate Blue text */
+}
+
+/* Custom Base Pale Blue Background for Dashboard */
+.bg-pale-blue {
+  background-color: #f0f4f8;
+}
+
+/* Active tab state override for Sidebar menu */
+.menu button.active {
+  background-color: #eff6ff !important;
+  color: #1d4ed8 !important;
+  font-weight: 600;
+  border-left: 4px solid #2563eb;
+  border-radius: 0px 8px 8px 0px;
+}
+
+/* Form Input Focus Control Enhancements */
+.input:focus, .select:focus {
+  border-color: #2563eb !important;
+  outline: none;
+}
+
+/* Hide default dialog borders and scrollbars */
+dialog.modal::backdrop {
+  background: rgba(15, 23, 42, 0.4);
+  backdrop-filter: blur(4px);
+}
