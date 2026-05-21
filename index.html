@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>উত্তরবঙ্গ স্বাস্থ্য সেতু — এডমিন প্যানেল</title>
+  
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@4.11.1/dist/full.min.css" rel="stylesheet" type="text/css" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <link rel="stylesheet" href="style.css">
+  
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="bg-pale-blue min-h-screen flex flex-col md:flex-row">
+
+  <div id="login-screen" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900 bg-opacity-50 backdrop-blur-sm">
+    <div class="card w-96 bg-white shadow-2xl border border-blue-100">
+      <div class="card-body items-center text-center">
+        <svg class="w-16 h-16 text-blue-600 mb-2" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M19 10.5V20a2 2 0 01-2 2H7a2 2 0 01-2-2v-9.5m14 0a2 2 0 00-2-2h-2m2 2l-3-3m-7 3a2 2 0 012-2h2m-2 2l3-3M3 7h18M4 11h16M10 15h4M12 13v4"></path>
+        </svg>
+        <h2 class="card-title text-xl font-bold text-slate-800">স্বাস্থ্য সেতু এডমিন লগইন</h2>
+        <p class="text-xs text-slate-400 mb-4">শুধুমাত্র অথরাইজড অ্যাকাউন্ট অ্যাক্সেস করতে পারবে</p>
+        
+        <div class="form-control w-full">
+          <input type="email" id="login-email" placeholder="এডমিন ইমেইল" class="input input-bordered w-full bg-slate-50 text-slate-800 btn-sm h-10 mb-3" value="MythraLux@gmail.com" readonly />
+          <input type="password" id="login-password" placeholder="পাসওয়ার্ড" class="input input-bordered w-full bg-slate-50 text-slate-800 btn-sm h-10" required />
+        </div>
+        
+        <div class="card-actions w-full mt-4">
+          <button id="btn-submit-login" class="btn btn-primary w-full bg-blue-600 hover:bg-blue-700 text-white">প্রবেশ করুন</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <aside id="main-sidebar" class="w-full md:w-72 bg-white border-r border-blue-100 flex flex-col justify-between p-4 shadow-sm">
+    <div>
+      <div class="flex items-center gap-3 mb-8 px-2 py-3 bg-blue-50 rounded-xl">
+        <svg class="w-10 h-10 text-blue-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+        </svg>
+        <div>
+          <h1 class="text-md font-bold text-slate-800 leading-tight">উত্তরবঙ্গ স্বাস্থ্য সেতু</h1>
+          <span class="text-xs text-blue-500 font-semibold">ম্যানেজমেন্ট প্যানেল</span>
+        </div>
+      </div>
+
+      <nav>
+        <ul class="menu menu-md p-0 gap-1 text-slate-600 font-medium">
+          <li><button onclick="switchTab('dashboard')" id="tab-dashboard" class="py-2.5">📊 ড্যাশবোর্ড</button></li>
+          <li><button onclick="switchTab('doctors')" id="tab-doctors" class="py-2.5">🩺 ডাক্তার প্রোফাইল</button></li>
+          <li><button onclick="switchTab('hospitals')" id="tab-hospitals" class="py-2.5">🏥 হাসপাতাল ও ডায়াগনস্টিক</button></li>
+          <li><button onclick="switchTab('reviews')" id="tab-reviews" class="py-2.5 flex justify-between items-center">⭐ রিভিউ মডারেশন <span id="review-badge" class="badge badge-sm badge-error text-white hidden">০</span></button></li>
+          <li><button onclick="switchTab('symptoms')" id="tab-symptoms" class="py-2.5">🧠 সিম্পটম ম্যাপিং</button></li>
+          <li><button onclick="switchTab('ads')" id="tab-ads" class="py-2.5">📢 ব্যানার ও বিজ্ঞাপন</button></li>
+        </ul>
+      </nav>
+    </div>
+
+    <div class="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between">
+      <div class="truncate pr-2">
+        <p class="text-xs text-slate-400">লগইন অ্যাকাউন্ট:</p>
+        <p class="text-xs font-semibold text-slate-700 truncate" id="admin-display-email">MythraLux@gmail.com</p>
+      </div>
+      <button id="btn-logout" class="btn btn-square btn-ghost btn-sm text-red-500 hover:bg-red-50" title="লগআউট">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+      </button>
+    </div>
+  </aside>
+
+  <main class="flex-1 p-4 md:p-8 flex flex-col min-w-0">
+    <div class="flex items-center justify-between mb-6 bg-white p-4 rounded-xl border border-blue-50/50 shadow-sm">
+      <h2 id="view-title" class="text-xl font-bold text-slate-800">ড্যাশবোর্ড ওভারভিউ</h2>
+      <div id="global-status" class="badge bg-emerald-50 text-emerald-700 border-emerald-100 font-semibold gap-1.5 p-3">
+        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> লাইভ কানেক্টেড
+      </div>
+    </div>
+
+    <div id="view-container" class="bg-white p-6 rounded-xl border border-blue-50/50 shadow-sm min-h-[500px]"></div>
+  </main>
+
+  <dialog id="chamber-modal" class="modal">
+    <div class="modal-box bg-white max-w-md border border-slate-100">
+      <h3 class="font-bold text-md text-slate-800" id="modal-doc-title">চেম্বার যোগ করুন</h3>
+      <p class="text-xs text-slate-400 mb-4">একই ডাক্তারের একাধিক শহরের চেম্বার ও সময় নিখুঁত ম্যাপিং</p>
+      
+      <form id="form-add-chamber" onsubmit="saveChamberData(event)" class="space-y-3 text-slate-700">
+        <input type="hidden" id="chamber-doc-id" />
+        <div>
+          <label class="label p-1 text-[11px] font-bold">চেম্বারের নাম/হাসপাতাল নাম *</label>
+          <input type="text" id="cham-name" placeholder="উদা: উত্তরবঙ্গ নার্সিং হোম বা অ্যাপোলো ক্লিনিক" class="input input-bordered input-sm w-full bg-slate-50" required />
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="label p-1 text-[11px] font-bold">শহর (North Bengal City) *</label>
+            <select id="cham-city" class="select select-bordered select-sm w-full bg-slate-50 text-xs" required>
+              </select>
+          </div>
+          <div>
+            <label class="label p-1 text-[11px] font-bold">এલાকা/লোকেশন রোড *</label>
+            <input type="text" id="cham-area" placeholder="উদা: হিলকার্ট রোড, হাকিমপাড়া" class="input input-bordered input-sm w-full bg-slate-50" required />
+          </div>
+        </div>
+        <div>
+          <label class="label p-1 text-[11px] font-bold">সম্পূর্ণ ঠিকানা *</label>
+          <input type="text" id="cham-address" placeholder="উদা: ৪ নম্বর ওয়ার্ড, সিলিগুরি" class="input input-bordered input-sm w-full bg-slate-50" required />
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="label p-1 text-[11px] font-bold">ডাক্তার ভিজিট ফি (টাকা) *</label>
+            <input type="number" id="cham-fees" placeholder="৬০০" class="input input-bordered input-sm w-full bg-slate-50" required />
+          </div>
+          <div>
+            <label class="label p-1 text-[11px] font-bold">চেম্বার সিরিয়াল ফোন *</label>
+            <input type="text" id="cham-phone" placeholder="9876543210 (কমা দিয়ে একাধিক)" class="input input-bordered input-sm w-full bg-slate-50 text-xs" required />
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="label p-1 text-[11px] font-bold">সরাসরি হোয়াটসঅ্যাপ লিংক</label>
+            <input type="text" id="cham-whatsapp" placeholder="+91..." class="input input-bordered input-sm w-full bg-slate-50" />
+          </div>
+          <div>
+            <label class="label p-1 text-[11px] font-bold">চেম্বার বসার সময় (JSON-Text) *</label>
+            <input type="text" id="cham-timing" value='{"শনি - সোম": "বিকাল ৪টা - রাত ৮টা"}' class="input input-bordered input-sm w-full bg-slate-50 text-xs" required />
+          </div>
+        </div>
+        
+        <div class="modal-action">
+          <button type="button" onclick="document.getElementById('chamber-modal').close()" class="btn btn-sm btn-ghost">বন্ধ করুন</button>
+          <button type="submit" id="btn-save-chamber" class="btn btn-sm btn-primary bg-blue-600 text-white">সেভ চেম্বার</button>
+        </div>
+      </form>
+    </div>
+  </dialog>
+
+  <script src="app.js"></script>
+</body>
+</html>
